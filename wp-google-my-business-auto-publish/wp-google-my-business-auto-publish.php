@@ -4,7 +4,7 @@
 *		Plugin Name: Auto Publish for Google My Business
 *		Plugin URI: https://www.northernbeacheswebsites.com.au
 *		Description: Publish your latest posts to Google My Business automatically. 
-*		Version: 3.11
+*		Version: 3.12
 *		Author: Martin Gibson
 *		Text Domain: auto-publish-for-google-my-business  
 *		Support: https://www.northernbeacheswebsites.com.au/contact
@@ -1087,6 +1087,13 @@ function wp_google_my_business_auto_publish_send_to_google_common($postID){
             //do additional check for dimensions
             $imageInfo = getimagesize($thumbnailUrl);
 
+            if($imageInfo == false){
+                $imageInfo = array(
+                    251,
+                    251
+                );
+            }
+
             //get file size
             $headers = get_headers($thumbnailUrl, true);
             
@@ -1095,7 +1102,6 @@ function wp_google_my_business_auto_publish_send_to_google_common($postID){
             } else {
                 $imageSize = 10241;
             }
-        
 
             if( $imageInfo[0] > 250 && $imageInfo[1] > 250 && $imageSize > 10240 ){
                 $json['media'] = array(
@@ -1163,67 +1169,69 @@ function wp_google_my_business_auto_publish_send_to_google_common($postID){
     //create an array which will hold statuses
     $returnStatuses = array();
     
-    //loop through locations
-    foreach($locationsToShareToAsArray as $location){
+    if(1 == 1){ //just used for debugging
+        //loop through locations
+        foreach($locationsToShareToAsArray as $location){
 
-        $response = wp_remote_post( 'https://mybusiness.googleapis.com/v4/'.$location.'/localPosts', array(
-            'headers' => array(
-                'Authorization' => 'Bearer '.wp_google_my_business_auto_publish_get_access_token(),
-                'Content-Type' => 'application/json; charset=utf-8',
-            ),
-            'body' => $json,
-        ));    
+            $response = wp_remote_post( 'https://mybusiness.googleapis.com/v4/'.$location.'/localPosts', array(
+                'headers' => array(
+                    'Authorization' => 'Bearer '.wp_google_my_business_auto_publish_get_access_token(),
+                    'Content-Type' => 'application/json; charset=utf-8',
+                ),
+                'body' => $json,
+            ));    
 
-        $status = wp_remote_retrieve_response_code($response);
+            $status = wp_remote_retrieve_response_code($response);
 
-        if ( ! is_wp_error( $response ) ) {
+            if ( ! is_wp_error( $response ) ) {
 
-            //only save to log if successful
-            if ( 200 == $status ) {
+                //only save to log if successful
+                if ( 200 == $status ) {
 
-                //save the response to a new meta option 
-                //get and decode the response    
-                $decodedBody = json_decode(preg_replace('/("\w+"):(\d+(\.\d+)?)/', '\\1:"\\2"', $response['body']), true); 
+                    //save the response to a new meta option 
+                    //get and decode the response    
+                    $decodedBody = json_decode(preg_replace('/("\w+"):(\d+(\.\d+)?)/', '\\1:"\\2"', $response['body']), true); 
 
-                //get current date and time in the wordpress format and to the wordpress timezone    
-                $dateTime = date(get_option('date_format').' '.get_option('time_format'),strtotime(get_option('gmt_offset').' hours'));    
+                    //get current date and time in the wordpress format and to the wordpress timezone    
+                    $dateTime = date(get_option('date_format').' '.get_option('time_format'),strtotime(get_option('gmt_offset').' hours'));    
 
-                $sharedUrl = sanitize_text_field($decodedBody['searchUrl']);
+                    $sharedUrl = sanitize_text_field($decodedBody['searchUrl']);
 
-                //get the current time and create a link that goes to the post    
-                $googleResponse = '<a target="_blank" href="'.$sharedUrl.'">'.$dateTime.' ('.$locationData[$location].')</a>';   
+                    //get the current time and create a link that goes to the post    
+                    $googleResponse = '<a target="_blank" href="'.$sharedUrl.'">'.$dateTime.' ('.$locationData[$location].')</a>';   
 
-                //update the post meta with time and URL        
-                //if the post hasn't been shared before send an array with the data if it has been shared get the existing array and append the new item to the array
-                if(metadata_exists('post',$postID,'_sent_to_google')){
+                    //update the post meta with time and URL        
+                    //if the post hasn't been shared before send an array with the data if it has been shared get the existing array and append the new item to the array
+                    if(metadata_exists('post',$postID,'_sent_to_google')){
 
-                    $existingShares = array();
-                    foreach(get_post_meta($postID, '_sent_to_google', true ) as $share){
-                        array_push($existingShares,$share); 
-                    }
-                    array_push($existingShares,$googleResponse);
-                    update_post_meta($postID, '_sent_to_google',$existingShares);
+                        $existingShares = array();
+                        foreach(get_post_meta($postID, '_sent_to_google', true ) as $share){
+                            array_push($existingShares,$share); 
+                        }
+                        array_push($existingShares,$googleResponse);
+                        update_post_meta($postID, '_sent_to_google',$existingShares);
+
+                    } else {
+                        update_post_meta($postID, '_sent_to_google',array($googleResponse));     
+                    }   
+
+                    //add the post meta which prevents the post being shared again
+                    update_post_meta($postID, '_dont_share_post_google','yes');
+
+                    //push success to array
+                    array_push($returnStatuses,'success');
 
                 } else {
-                    update_post_meta($postID, '_sent_to_google',array($googleResponse));     
-                }   
-
-                //add the post meta which prevents the post being shared again
-                update_post_meta($postID, '_dont_share_post_google','yes');
-
-                //push success to array
-                array_push($returnStatuses,'success');
-
+                    $decodedBody = json_decode(preg_replace('/("\w+"):(\d+(\.\d+)?)/', '\\1:"\\2"', $response['body']), true); 
+                    array_push($returnStatuses,$status.' '.$decodedBody['error']['status'].' '.$decodedBody['error']['message']);
+                }
             } else {
-                $decodedBody = json_decode(preg_replace('/("\w+"):(\d+(\.\d+)?)/', '\\1:"\\2"', $response['body']), true); 
-                array_push($returnStatuses,$status.' '.$decodedBody['error']['status'].' '.$decodedBody['error']['message']);
+                $error_message = wp_remote_retrieve_response_message( $response );
+                array_push($returnStatuses,$status.' '.$error_message);    
             }
-        } else {
-            $error_message = wp_remote_retrieve_response_message( $response );
-            array_push($returnStatuses,$status.' '.$error_message);    
-        }
-        
-    } //end for each location
+            
+        } //end for each location
+    }
 
     $returnMessage = 'success';
 
