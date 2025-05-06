@@ -4,7 +4,7 @@
 *		Plugin Name: Auto Publish for Google My Business
 *		Plugin URI: https://www.northernbeacheswebsites.com.au
 *		Description: Publish your latest posts to Google My Business automatically. 
-*		Version: 3.12
+*		Version: 3.13
 *		Author: Martin Gibson
 *		Text Domain: auto-publish-for-google-my-business  
 *		Support: https://www.northernbeacheswebsites.com.au/contact

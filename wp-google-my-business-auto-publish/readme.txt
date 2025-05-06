@@ -4,8 +4,8 @@
 * Tags: google my business, google my business auto publish, google business, auto publish, autopublish, google business auto publish, social media auto publish, social network auto publish
 * Requires at least: 4.0
 * Requires PHP: 5.2.4
-* Tested up to: 6.7.1
-* Stable tag: 3.12
+* Tested up to: 6.8.1
+* Stable tag: 3.13
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,9 @@ Frequently asked questions can be found under the help tab on the plugin setting
 
 
 == Changelog ==
+
+= 3.13 =
+* Small security update, thanks @Artyom
 
 = 3.12 =
 * Small fix for image size check
@@ -232,6 +235,9 @@ Frequently asked questions can be found under the help tab on the plugin setting
 
 
 == Upgrade Notice ==
+
+= 3.13 =
+* Small security update, thanks @Artyom
 
 = 3.12 =
 * Small fix for image size check

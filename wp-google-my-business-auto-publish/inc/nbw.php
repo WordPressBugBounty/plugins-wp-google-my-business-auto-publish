@@ -235,7 +235,7 @@
                 $html .= '<div class="nbw_item '.$class.'">';
                 $html .= '<div class="nbw_item_inner">';
 
-                    $html .= '<a target="_blank" '.$ctaLink.' class="name">'.$plugin->name.'</a>';
+                    $html .= '<a target="_blank" '.esc_url($ctaLink).' class="name">'.$plugin->name.'</a>';
 
                     $html .= '<div class="item-meta">';
                         $html .= '<span class="type">FREE PLUGIN</span>';
@@ -253,7 +253,7 @@
                     
 
 
-                    $html .= '<a target="_blank" '.$ctaLink.' class="call-to-action">'.$buttonText.'</a>'; 
+                    $html .= '<a target="_blank" '.esc_url($ctaLink).' class="call-to-action">'.$buttonText.'</a>'; 
 
                 $html .= '</div>'; 
                 $html .= '</div>'; 
@@ -324,7 +324,7 @@
 
             $html .= '<div class="nbw_item '.$class.'">';
             $html .= '<div class="nbw_item_inner">';
-                $html .= '<a target="_blank" '.$ctaLink.' class="name">'.$plugin['name'].'</a>';
+                $html .= '<a target="_blank" '.esc_url($ctaLink).' class="name">'.$plugin['name'].'</a>';
 
                 $html .= '<div class="item-meta">';
                     $html .= '<span class="type">PRO PLUGIN</span>';
@@ -333,7 +333,7 @@
 
                 $html .= '<span class="description">'.$plugin['description'].'</span>'; 
                 
-                $html .= '<a target="_blank" '.$ctaLink.' class="call-to-action">'.$buttonText.'</a>'; 
+                $html .= '<a target="_blank" '.esc_url($ctaLink).' class="call-to-action">'.$buttonText.'</a>'; 
             $html .= '</div>'; 
             $html .= '</div>'; 
 
@@ -367,7 +367,7 @@
           
             $html .= '<div class="nbw_item '.$class.'">';
             $html .= '<div class="nbw_item_inner">';
-                $html .= '<a target="_blank" '.$ctaLink.' class="name">'.$service['name'].'</a>';
+                $html .= '<a target="_blank" '.esc_url($ctaLink).' class="name">'.$service['name'].'</a>';
 
                 $html .= '<div class="item-meta">';
                     $html .= '<span class="type">SERVICE</span>';
@@ -376,7 +376,7 @@
 
                 $html .= '<span class="description">'.$service['description'].'</span>'; 
                 
-                $html .= '<a target="_blank" '.$ctaLink.' class="call-to-action">Enquire</a>'; 
+                $html .= '<a target="_blank" '.esc_url($ctaLink).' class="call-to-action">Enquire</a>'; 
             $html .= '</div>'; 
             $html .= '</div>'; 
 
