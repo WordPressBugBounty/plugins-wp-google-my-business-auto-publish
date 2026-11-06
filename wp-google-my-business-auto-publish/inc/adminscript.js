@@ -302,88 +302,50 @@ jQuery(document).ready(function ($) {
         //console.log(code);
         
         
-        jQuery.ajax({
-            url: "https://www.googleapis.com/oauth2/v4/token?" + jQuery.param({
-                "code": code,
-                "client_id": "979275334189-mqphf6kpvpji9km7i6pm0sq5ddvfoa60.apps.googleusercontent.com",
-                "client_secret": "hENqfr4whG7qs5QxSSzOa9_s",
-                "redirect_uri": "https://northernbeacheswebsites.com.au/redirectgoogle/",
-                "grant_type": "authorization_code",
-            }),
-            type: "POST",
-        })
-        .done(function(data, textStatus, jqXHR) {
-            
-            console.log(data);
-            
-            //save the access token
-            var accessToken = data.access_token;
-            var refreshToken = data.refresh_token;
-            
-            var nonce = $('#google_my_business_auto_publish_settings_form').attr('data-nonce-save-auth-details');
+        //send the authorisation code to WordPress, which exchanges it for tokens server side
+        //(keeps the client secret and tokens out of the browser)
+        var nonce = $('#google_my_business_auto_publish_settings_form').attr('data-nonce-save-auth-details');
 
-            var data = {
-                    'action': 'save_authentication_details',
-                    'accessToken': accessToken,
-                    'refreshToken': refreshToken,
-                    'nonce': nonce,
-                };
+        var data = {
+                'action': 'save_authentication_details',
+                'code': code,
+                'nonce': nonce,
+            };
 
-            jQuery.post(ajaxurl, data, function (response) {
+        jQuery.post(ajaxurl, data, function (response) {
+            
+            if(response == 'SUCCESS'){
                 
+                $('#wp_google_my_business_auto_publish_tab_memory').val('#googleAccountSelect');
+                
+                $('#google_my_business_auto_publish_settings_form').ajaxSubmit({
+                    success: function(){
+                    }
+                });
+                
+                //the call was succesful
+                $('<div class="notice notice-info is-dismissible"><p>The connection to your Google account has been successful. You now need to select your Google account, we will take you there in <span id="countdown"></span></p></div>').insertAfter('#gmb-authentication');
+                
+                var count = 9;
+                var countdown = setInterval(function(){
+                    $("#countdown").html(count);
+                    if (count == 0) {
+                        clearInterval(countdown);
+                        window.location.href = getCurrentPageUrl();
+                    }
+                    count--;
+                }, 1000);
+                
+            } else {
+                //we ran into an issue
                 console.log(response);
-                
-                if(response == 'SUCCESS'){
-                    
-                    
-                    $('#wp_google_my_business_auto_publish_tab_memory').val('#googleAccountSelect');
-                    
-                    
-                    
-                    $('#google_my_business_auto_publish_settings_form').ajaxSubmit({
-                        success: function(){
-                        }
-                    });
-                    
-                    
-                    
-                    //the call was succesful
-                    $('<div class="notice notice-info is-dismissible"><p>The connection to your Google account has been successful. You now need to select your Google account, we will take you there in <span id="countdown"></span></p></div>').insertAfter('#gmb-authentication');
-                    
-                    
-                        var count = 9;
-                      var countdown = setInterval(function(){
-                        $("#countdown").html(count);
-                        if (count == 0) {
-                          clearInterval(countdown);
-                          window.location.href = getCurrentPageUrl();
-
-                        }
-                        count--;
-                      }, 1000);
-                    
- 
-                    
-                } else {
-                    //we ran into an issue
-                $('<div class="notice notice-error is-dismissible"><p>Something went wrong, please try again later or if the issue persists please create a support ticket.</p></div>').insertAfter('#gmb-authentication');     
-                    
-                }
-                
-                
-                
-                
-            });
-
+                var errorNotice = $('<div class="notice notice-error is-dismissible"><p></p></div>');
+                errorNotice.find('p').text('Something went wrong connecting to Google (' + response + '). Please try again or if the issue persists please create a support ticket.');
+                errorNotice.insertAfter('#gmb-authentication');
+            }
             
-            
-            
-        })
-        .fail(function(jqXHR, textStatus, errorThrown) {
-            console.log("HTTP Request Failed");
-        })
-        .always(function() {
-            /* ... */
+        }).fail(function() {
+            $('<div class="notice notice-error is-dismissible"><p>Something went wrong, please try again later or if the issue persists please create a support ticket.</p></div>').insertAfter('#gmb-authentication');
         });
 
         
@@ -723,6 +685,7 @@ jQuery(document).ready(function ($) {
         var data = {
                     'action': 'dismiss_welcome_message',
                     'pluginVersion': pluginVersion,
+                    'nonce': $(this).parent().attr('data-nonce'),
                     };
 
 

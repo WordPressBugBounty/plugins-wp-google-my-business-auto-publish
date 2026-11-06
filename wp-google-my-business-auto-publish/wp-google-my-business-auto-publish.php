@@ -4,12 +4,20 @@
 *		Plugin Name: Auto Publish for Google My Business
 *		Plugin URI: https://www.northernbeacheswebsites.com.au
 *		Description: Publish your latest posts to Google My Business automatically. 
-*		Version: 3.13
+*		Version: 3.15
 *		Author: Martin Gibson
 *		Text Domain: auto-publish-for-google-my-business  
 *		Support: https://www.northernbeacheswebsites.com.au/contact
 *		Licence: GPL2
 */
+
+if ( ! defined( "ABSPATH" ) ) {
+    exit;
+}
+
+define( "WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_CLIENT_ID", "979275334189-mqphf6kpvpji9km7i6pm0sq5ddvfoa60.apps.googleusercontent.com" );
+define( "WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_CLIENT_SECRET", "hENqfr4whG7qs5QxSSzOa9_s" );
+define( "WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_REDIRECT_URI", "https://plugins.northernbeacheswebsites.com.au/redirectgoogle/" );
 
 /**
 * 
@@ -366,7 +374,7 @@ function wp_google_my_business_auto_publish_tab_content($tabName) {
     
     
     
-                                                echo '<a data-nonce="'.wp_create_nonce( $googlePost['name'] ).'" class="edit-google-post" data="'.$googlePost['name'].'"         
+                                                echo '<a data-nonce="'.wp_create_nonce( $googlePost['name'] ).'" class="edit-google-post" data="'.esc_attr($googlePost['name']).'"         
     
                                                 data-postContent="'.esc_attr($googlePost['summary']).'"
                                                 data-postLink="'.esc_attr($postLinkData).'"
@@ -854,14 +862,59 @@ add_action( 'save_post', 'wp_google_my_business_auto_publish_save_meta_boxes_dat
 */
 function wp_google_my_business_auto_publish_save_authentication_details() {
 	
-    if ( ! wp_verify_nonce( $_POST['nonce'], 'save_authentication_details' ) ) {
-        wp_die(); 
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'save_authentication_details' ) ) {
+        wp_die();
     } else {
-        //get the code field
-        $accessToken = sanitize_text_field($_POST['accessToken']);
-        $refreshToken = sanitize_text_field($_POST['refreshToken']);
-        
-        
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die();
+        }
+
+        //get the authorisation code returned by google
+        $code = isset( $_POST['code'] ) ? sanitize_text_field( wp_unslash( $_POST['code'] ) ) : '';
+
+        if ( $code === '' ) {
+            echo 'ERROR: missing authorisation code';
+            wp_die();
+        }
+
+        //exchange the code for tokens server side so the client secret and tokens never touch the browser
+        $response = wp_remote_post( 'https://oauth2.googleapis.com/token', array(
+            'body' => array(
+                'code'          => $code,
+                'client_id'     => WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_CLIENT_ID,
+                'client_secret' => WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_CLIENT_SECRET,
+                'redirect_uri'  => WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_REDIRECT_URI,
+                'grant_type'    => 'authorization_code',
+            ),
+        ));
+
+        if ( is_wp_error( $response ) ) {
+            echo 'ERROR: ' . esc_html( $response->get_error_message() );
+            wp_die();
+        }
+
+        $jsondata = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        if ( 200 != wp_remote_retrieve_response_code( $response ) || empty( $jsondata['access_token'] ) ) {
+            $errorMessage = isset( $jsondata['error_description'] ) ? $jsondata['error_description'] : ( isset( $jsondata['error'] ) ? $jsondata['error'] : 'token exchange failed' );
+            echo 'ERROR: ' . esc_html( $errorMessage );
+            wp_die();
+        }
+
+        $accessToken = sanitize_text_field( $jsondata['access_token'] );
+
+        //google only returns a refresh token on consent, so keep the existing one if a new one isn't supplied
+        $existingSettings = get_option( 'wp_google_my_business_auto_publish_auth_settings' );
+        if ( ! empty( $jsondata['refresh_token'] ) ) {
+            $refreshToken = sanitize_text_field( $jsondata['refresh_token'] );
+        } elseif ( is_array( $existingSettings ) && ! empty( $existingSettings['refresh_token'] ) ) {
+            $refreshToken = $existingSettings['refresh_token'];
+        } else {
+            $refreshToken = '';
+        }
+
+
         //lets create an array which will store our updated settings
         $pluginSettings = array();
 
@@ -912,11 +965,21 @@ function wp_google_my_business_auto_publish_get_access_token() {
             $pluginSettings = get_option('wp_google_my_business_auto_publish_auth_settings');
 
             //current refresh token
-            $currentRefreshToken = $pluginSettings['refresh_token'];
+            $currentRefreshToken = isset( $pluginSettings['refresh_token'] ) ? $pluginSettings['refresh_token'] : '';
 
+            if ( empty( $currentRefreshToken ) ) {
+                return 'ERROR';
+            }
 
-            //do response
-            $response = wp_remote_post( 'https://www.googleapis.com/oauth2/v4/token?refresh_token='.$currentRefreshToken.'&client_id=979275334189-mqphf6kpvpji9km7i6pm0sq5ddvfoa60.apps.googleusercontent.com&client_secret=hENqfr4whG7qs5QxSSzOa9_s&grant_type=refresh_token' );
+            //do response - credentials go in the POST body rather than the URL so they don't end up in logs
+            $response = wp_remote_post( 'https://oauth2.googleapis.com/token', array(
+                'body' => array(
+                    'refresh_token' => $currentRefreshToken,
+                    'client_id'     => WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_CLIENT_ID,
+                    'client_secret' => WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_CLIENT_SECRET,
+                    'grant_type'    => 'refresh_token',
+                ),
+            ));
 
             if ( ! is_wp_error( $response ) ) {
                 // The request went through successfully, check the response code against
@@ -1595,15 +1658,22 @@ add_action( 'wp_ajax_post_now_to_google', 'wp_google_my_business_auto_publish_po
 */
 function wp_google_my_business_auto_publish_delete_post() {
     
-    if ( ! wp_verify_nonce( $_POST['nonce'], 'delete_post_on_google' ) ) {
-        wp_die(); 
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'delete_post_on_google' ) ) {
+        wp_die();
     } else {
 
-        //get options
-        $options = get_option( 'wp_google_my_business_auto_publish_settings' );
-        
-        //get the code field
-        $postID = intval($_POST['postID']);
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die();
+        }
+
+        //the post id is the full google resource name e.g. accounts/123/locations/456/localPosts/789
+        //(previously this was run through intval which turned it into 0 and broke deleting)
+        $postID = isset( $_POST['postID'] ) ? sanitize_text_field( wp_unslash( $_POST['postID'] ) ) : '';
+
+        if ( ! preg_match( '#^accounts/[A-Za-z0-9_-]+/locations/[A-Za-z0-9_-]+/localPosts/[A-Za-z0-9_-]+$#', $postID ) ) {
+            echo 'ERROR';
+            wp_die();
+        }
 
         $response = wp_remote_request( 'https://mybusiness.googleapis.com/v4/'.$postID, array(
             'headers' => array(
@@ -1633,12 +1703,16 @@ add_action( 'wp_ajax_delete_post_on_google', 'wp_google_my_business_auto_publish
 function wp_google_my_business_auto_publish_dismiss_welcome_message() {
     
     if (!current_user_can('manage_options')) {
-        wp_die();    
+        wp_die();
     }
-    
+
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'dismiss_welcome_message' ) ) {
+        wp_die();
+    }
+
 	//get options
     $options = get_option( 'wp_google_my_business_auto_publish_settings' );
-    
+
     $pluginVersion = sanitize_text_field($_POST['pluginVersion']);
     
     $options['wp_google_my_business_auto_publish_dismiss_welcome_message'] = $pluginVersion;
@@ -1686,14 +1760,20 @@ function wp_google_my_business_auto_publish_get_accounts() {
 
             $jsondata = json_decode($response['body'],true); 
 
-            $accounts = $jsondata['accounts'];
+            //google omits the accounts key entirely when there are no accounts
+            $accounts = ( is_array( $jsondata ) && ! empty( $jsondata['accounts'] ) ) ? $jsondata['accounts'] : array();
 
-            set_transient($transientName,$accounts,DAY_IN_SECONDS*7);
-            
+            //don't cache an empty result for 7 days, otherwise newly added accounts won't appear
+            if ( ! empty( $accounts ) ) {
+                set_transient($transientName,$accounts,DAY_IN_SECONDS*7);
+            }
+
             return $accounts;
 
         } else {
-            
+
+            error_log( 'Auto Publish for Google My Business - accounts request failed: ' . ( is_wp_error( $response ) ? $response->get_error_message() : wp_remote_retrieve_response_code( $response ) . ' ' . wp_remote_retrieve_body( $response ) ) );
+
             return 'ERROR';
             
         }
@@ -1939,7 +2019,7 @@ function wp_google_my_business_auto_publish_create_edit_form($postContent, $post
     $html .= '<p class="google-post-field">';
     $html .= '<label>'.__('Post Image', 'wp-google_business-auto_publish').'</label>';
     
-    $html .= '<input type="text" id="post-image" value="'.esc_html($postImage).'"> <button type="button" name="upload-btn" id="upload-btn" class="button-secondary"><i class="fa fa-picture-o" aria-hidden="true"></i> '.__('Upload Image', 'wp-google_business-auto_publish').'</button>';
+    $html .= '<input type="text" id="post-image" value="'.esc_url($postImage).'"> <button type="button" name="upload-btn" id="upload-btn" class="button-secondary"><i class="fa fa-picture-o" aria-hidden="true"></i> '.__('Upload Image', 'wp-google_business-auto_publish').'</button>';
     
     if($postImage == ''){
         $postImageStyle = 'display: none;';
@@ -1947,7 +2027,7 @@ function wp_google_my_business_auto_publish_create_edit_form($postContent, $post
         $postImageStyle = '';     
     }
     
-    $html .= '<img id="imagePreview" style="'.$postImageStyle.' margin-top: 10px; object-fit: cover; border-radius: 4px !important;"  src="'.esc_html($postImage).'" class="avatar avatar-96 photo" height="96" width="96">';
+    $html .= '<img id="imagePreview" style="'.$postImageStyle.' margin-top: 10px; object-fit: cover; border-radius: 4px !important;"  src="'.esc_url($postImage).'" class="avatar avatar-96 photo" height="96" width="96">';
         
     $html .= '</p>';    
                         
@@ -2355,9 +2435,14 @@ add_action( 'wp_ajax_update_shortcode_preview', 'wp_google_my_business_auto_publ
 */
 function wp_google_my_business_auto_publish_delete_all_plugin_settings() {
 
-    if ( ! wp_verify_nonce( $_POST['nonce'], 'delete_gmb_settings' ) ) {
-        wp_die(); 
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'delete_gmb_settings' ) ) {
+        wp_die();
     } else {
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die();
+        }
+
         //delete options    
         delete_option('wp_google_my_business_auto_publish_auth_settings');
         delete_option('wp_google_my_business_auto_publish_settings');

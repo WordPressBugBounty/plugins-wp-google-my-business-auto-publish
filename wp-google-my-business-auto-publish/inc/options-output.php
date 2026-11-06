@@ -168,7 +168,7 @@ function wp_google_my_business_auto_publish_settings_connect_callback(){
     echo '<tr class="google_business_settings_row" valign="top">
         <td scope="row" colspan="2">';
     
-    echo '<a style="margin-top:20px;" href="https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/plus.business.manage&access_type=offline&include_granted_scopes=true&state='.esc_html($adminUrl).'&redirect_uri=https://northernbeacheswebsites.com.au/redirectgoogle/&response_type=code&client_id=979275334189-mqphf6kpvpji9km7i6pm0sq5ddvfoa60.apps.googleusercontent.com&prompt=consent" id="gmb-authentication" class="button-secondary"><i style="color: #4a8af4;" class="fa fa-google" aria-hidden="true"></i> '.__('Connect with Google My Business', 'wp-google-my-business-auto-publish' ).'</a>';
+    echo '<a style="margin-top:20px;" href="https://accounts.google.com/o/oauth2/v2/auth?scope='.rawurlencode('https://www.googleapis.com/auth/business.manage').'&access_type=offline&include_granted_scopes=true&state='.esc_html($adminUrl).'&redirect_uri='.rawurlencode(WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_REDIRECT_URI).'&response_type=code&client_id='.rawurlencode(WP_GOOGLE_MY_BUSINESS_AUTO_PUBLISH_CLIENT_ID).'&prompt=consent" id="gmb-authentication" class="button-secondary"><i style="color: #4a8af4;" class="fa fa-google" aria-hidden="true"></i> '.__('Connect with Google My Business', 'wp-google-my-business-auto-publish' ).'</a>';
     
     echo '</td></tr>';
     

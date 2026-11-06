@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
             
         ?>
         
-            <div id="google-my-business-message" data-version="<?php echo esc_html(wp_google_my_business_auto_publish_get_version()); ?>" data-dismissible="disable-done-notice-forever" class="notice notice-warning is-dismissible">
+            <div id="google-my-business-message" data-nonce="<?php echo esc_attr( wp_create_nonce( 'dismiss_welcome_message' ) ); ?>" data-version="<?php echo esc_html(wp_google_my_business_auto_publish_get_version()); ?>" data-dismissible="disable-done-notice-forever" class="notice notice-warning is-dismissible">
             
                 <p><h3>A Message from the Developer</h3><p>Hi there! Thanks for using my plugin, if you like it please rate the plugin <a href="https://wordpress.org/support/plugin/wp-google-my-business-auto-publish/reviews/?rate=5#new-post" target="_blank"><i class="fa fa-star" aria-hidden="true"></i><i class="fa fa-star" aria-hidden="true"></i><i class="fa fa-star" aria-hidden="true"></i><i class="fa fa-star" aria-hidden="true"></i><i class="fa fa-star" aria-hidden="true"></i></a>'s. If the plugin doesn't work please visit the <a class="open-tab" href="#googleBusinessHelpPage">Help tab</a>.</p>
                 
@@ -89,7 +89,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 
         <!--start form-->
-        <form data="<?php echo esc_attr(wp_google_my_business_auto_publish_get_access_token()); ?>" id='google_my_business_auto_publish_settings_form' data-nonce-accounts="<?php echo wp_create_nonce( 'wp_google_my_business_auto_publish_accounts' )?>" data-nonce-locations="<?php echo wp_create_nonce( 'wp_google_my_business_auto_publish_locations' )?>" data-nonce-save-auth-details="<?php echo wp_create_nonce( 'save_authentication_details' )?>" action='options.php' method='post'>
+        <form id='google_my_business_auto_publish_settings_form' data-nonce-accounts="<?php echo wp_create_nonce( 'wp_google_my_business_auto_publish_accounts' )?>" data-nonce-locations="<?php echo wp_create_nonce( 'wp_google_my_business_auto_publish_locations' )?>" data-nonce-save-auth-details="<?php echo wp_create_nonce( 'save_authentication_details' )?>" action='options.php' method='post'>
             <!--start tabs-->
             <div id="tabs" class="nav-tab-wrapper"> 
                 <ul class="tab-titles">

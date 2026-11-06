@@ -4,8 +4,8 @@
 * Tags: google my business, google my business auto publish, google business, auto publish, autopublish, google business auto publish, social media auto publish, social network auto publish
 * Requires at least: 4.0
 * Requires PHP: 5.2.4
-* Tested up to: 6.8.1
-* Stable tag: 3.13
+* Tested up to: 7.1
+* Stable tag: 3.15
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,16 @@ Frequently asked questions can be found under the help tab on the plugin setting
 
 
 == Changelog ==
+
+= 3.15 =
+* Fixed accounts not showing after connecting to Google (redirect URI mismatch during token exchange)
+* Google token exchange now happens server side - client secret and tokens no longer exposed in the browser
+* Updated OAuth scope to business.manage
+* Fixed deleting Google posts from the plugin settings
+* Security hardening: added capability and nonce checks to admin AJAX actions, improved output escaping
+
+= 3.14 =
+* Fixing authentication issue
 
 = 3.13 =
 * Small security update, thanks @Artyom
@@ -235,6 +245,12 @@ Frequently asked questions can be found under the help tab on the plugin setting
 
 
 == Upgrade Notice ==
+
+= 3.15 =
+* Fixes accounts not showing after authentication plus security improvements. Please reconnect your Google account after updating.
+
+= 3.14 =
+* Fixing authentication issue
 
 = 3.13 =
 * Small security update, thanks @Artyom
